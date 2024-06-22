@@ -1,0 +1,23 @@
+- hosts: worker_nodes
+  become: yes
+  tasks:
+    - name: Remove Nginx
+      apt:
+        name: nginx
+        state: absent
+
+    - name: Remove Nginx configuration directory
+      file:
+        path: /etc/nginx
+        state: absent
+
+    - name: Remove Nginx web root directory
+      file:
+        path: /var/www/html
+        state: absent
+
+    - name: Ensure Nginx is not running
+      service:
+        name: nginx
+        state: stopped
+        enabled: no
