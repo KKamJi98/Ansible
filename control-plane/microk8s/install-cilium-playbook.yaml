@@ -1,0 +1,36 @@
+- name: Install Cilium in MicroK8s cluster
+  hosts: control_plane
+  become: true
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Check if MicroK8s is running
+      ansible.builtin.command:
+        cmd: microk8s status
+      register: microk8s_status
+      failed_when: microk8s_status.rc != 0
+    
+    - name: Display MicroK8s status
+      ansible.builtin.debug:
+        var: microk8s_status.stdout
+
+    - name: Enable MicroK8s add-on community
+      ansible.builtin.command:
+        cmd: microk8s enable community
+      register: community_output
+      failed_when: community_output.rc != 0
+    
+    - name: Display community add-on enable output
+      ansible.builtin.debug:
+        var: community_output.stdout
+
+    - name: Enable MicroK8s add-on cilium
+      ansible.builtin.command:
+        cmd: microk8s enable cilium
+      register: cilium_output
+      failed_when: cilium_output.rc != 0
+    
+    - name: Display cilium add-on enable output
+      ansible.builtin.debug:
+        var: cilium_output.stdout

@@ -1,0 +1,31 @@
+- name: Delete MicroK8s from worker nodes
+  hosts: worker_nodes
+  become: true
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Stop MicroK8s service
+      ansible.builtin.command:
+        cmd: microk8s stop
+      ignore_errors: yes
+      register: stop_output
+
+    - name: Remove MicroK8s snap package
+      ansible.builtin.command:
+        cmd: snap remove microk8s
+      register: remove_output
+
+    - name: Remove MicroK8s data directory
+      ansible.builtin.file:
+        path: /var/snap/microk8s
+        state: absent
+      ignore_errors: yes
+
+    - name: Debug removal output
+      ansible.builtin.debug:
+        var: remove_output
+
+    - name: Debug stop output
+      ansible.builtin.debug:
+        var: stop_output

@@ -5,6 +5,14 @@
     - name: Gather facts
       ansible.builtin.setup:
 
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Upgrade all packages to the latest version
+      ansible.builtin.apt:
+        upgrade: dist
+        
     - name: Ensure snapd is installed
       ansible.builtin.package:
         name: snapd

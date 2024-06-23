@@ -25,7 +25,7 @@
 
     - name: Join the node to the microk8s cluster
       ansible.builtin.command:
-        cmd: microk8s join 192.168.0.2:25000/16a8cbc05688caaa215959108ef4d71d/3e45c41f2363 --worker
+        cmd: microk8s join 192.168.0.100:25000/5cf6a42464d9a06347369b8d2a4737b8/702811910875 --worker
 
       register: join_output
       ignore_errors: no
