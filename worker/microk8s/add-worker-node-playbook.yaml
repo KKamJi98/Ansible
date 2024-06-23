@@ -1,0 +1,36 @@
+- name: Add worker nodes to MicroK8s cluster
+  hosts: worker_nodes
+  become: true
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Ensure snapd is installed
+      ansible.builtin.package:
+        name: snapd
+        state: present
+
+    - name: Install microk8s using snap
+      ansible.builtin.command:
+        cmd: snap install microk8s --classic --channel=1.30/stable
+      register: install_output
+
+    - name: Check if MicroK8s is running
+      ansible.builtin.command:
+        cmd: microk8s status --wait-ready
+      register: microk8s_status
+      until: microk8s_status.rc == 0
+      retries: 2
+      delay: 10
+
+    - name: Join the node to the microk8s cluster
+      ansible.builtin.command:
+        cmd: microk8s join 192.168.0.2:25000/16a8cbc05688caaa215959108ef4d71d/3e45c41f2363 --worker
+
+      register: join_output
+      ignore_errors: no
+
+    - name: Debug join output
+      ansible.builtin.debug:
+        var: join_output
+
