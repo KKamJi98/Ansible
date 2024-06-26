@@ -1,0 +1,27 @@
+- name: Install cilium
+  hosts: master_nodes
+  become: true
+  tasks:
+    - name: Download Cilium CLI
+      get_url:
+        url: https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
+        dest: /usr/local/bin/cilium-linux-amd64.tar.gz
+
+    - name: Extract and move Cilium CLI
+      unarchive:
+        src: /usr/local/bin/cilium-linux-amd64.tar.gz
+        dest: /usr/local/bin/
+        remote_src: yes
+      args:
+        creates: /usr/local/bin/cilium
+
+    - name: Deploy Cilium network plugin
+      shell: |
+        /usr/local/bin/cilium install
+      register: cilium_install
+
+    - name: Enable IPv4 and set CIDR
+      shell: |
+        /usr/local/bin/cilium config enable-ipv4=true
+        /usr/local/bin/cilium config cluster-pool-ipv4-cidr=10.244.0.0/16
+      when: cilium_install.changed
