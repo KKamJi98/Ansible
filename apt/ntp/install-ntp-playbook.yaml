@@ -1,4 +1,4 @@
-- name: install ntp all nodes
+- name: Install ntp all nodes
   hosts: nodes
   become: true
   tasks:
@@ -7,8 +7,8 @@
 
     - name: Update apt package index
       ansible.builtin.apt:
-        update_cache: yes
-    
+        update_cache: true
+
     - name: Install ntp
       ansible.builtin.apt:
         name: ntp
@@ -17,5 +17,5 @@
     - name: Enable and start kubelet service
       ansible.builtin.systemd:
         name: ntp
-        enabled: yes
+        enabled: true
         state: started

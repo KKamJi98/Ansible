@@ -7,7 +7,7 @@
 
     - name: Update apt package index
       ansible.builtin.apt:
-        update_cache: yes
+        update_cache: true
 
     - name: Install zsh, curl and expect
       ansible.builtin.apt:
@@ -21,7 +21,7 @@
       ansible.builtin.file:
         path: "{{ ansible_env.HOME }}/.oh-my-zsh"
         state: absent
-      ignore_errors: true
+      failed_when: false
 
     - name: Download oh-my-zsh install script
       ansible.builtin.get_url:
@@ -44,7 +44,9 @@
         RUNZSH: "no"
         CHSH: "no"
       register: oh_my_zsh_install
-      ignore_errors: true
+      when: not oh_my_zsh_status.stat.exists
+      changed_when: oh_my_zsh_install.rc == 0
+      failed_when: false
 
     - name: Debug oh-my-zsh install output
       ansible.builtin.debug:
@@ -64,22 +66,42 @@
       ansible.builtin.git:
         repo: https://github.com/romkatv/powerlevel10k.git
         dest: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/themes/powerlevel10k"
+        version: master
+
+    - name: Ensure .zshrc exists with correct permissions
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.zshrc"
+        state: touch
+        mode: '0644'
 
     - name: Set ZSH_THEME to powerlevel10k/powerlevel10k in .zshrc
       ansible.builtin.lineinfile:
         path: "{{ ansible_env.HOME }}/.zshrc"
         regexp: '^ZSH_THEME='
         line: 'ZSH_THEME="powerlevel10k/powerlevel10k"'
-        create: yes
+        create: true
+        mode: "644"
 
     - name: Ensure .zshrc contains the Powerlevel10k configuration
-      ansible.builtin.shell: |
-        echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> ~/.zshrc
-      args:
-        executable: /bin/zsh
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_env.HOME }}/.zshrc"
+        regexp: '^[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh'
+        line: '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh'
+        create: true
+        mode: '0644'
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+      register: p10k_config
+
+    - name: Set changed status based on lineinfile result
+      ansible.builtin.set_fact:
+        p10k_config_changed: "{{ p10k_config.changed }}"
+      changed_when: p10k_config_changed
 
     - name: Source the updated .zshrc
       ansible.builtin.shell: source ~/.zshrc
       args:
         executable: /bin/zsh
-      ignore_errors: yes
+      register: source_result
+      failed_when: source_result.rc != 0
+      changed_when: false
