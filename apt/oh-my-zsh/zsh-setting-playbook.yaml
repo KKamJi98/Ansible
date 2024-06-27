@@ -1,0 +1,85 @@
+- name: Install zsh, oh-my-zsh and Powerlevel10k theme on all nodes
+  hosts: nodes
+  become: true
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install zsh, curl and expect
+      ansible.builtin.apt:
+        name:
+          - zsh
+          - curl
+          - expect
+        state: present
+
+    - name: Remove existing oh-my-zsh folder (if exists)
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.oh-my-zsh"
+        state: absent
+      ignore_errors: true
+
+    - name: Download oh-my-zsh install script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+        dest: /tmp/install.sh
+        mode: '0755'
+
+    - name: Install oh-my-zsh using expect
+      ansible.builtin.shell: |
+        /usr/bin/expect -c '
+        spawn /bin/bash /tmp/install.sh
+        expect "Do you want to change your default shell to zsh? \[Y/n\]"
+        send -- "Y\r"
+        expect eof
+        '
+      args:
+        executable: /bin/bash
+      environment:
+        ZSH: "{{ ansible_env.HOME }}/.oh-my-zsh"
+        RUNZSH: "no"
+        CHSH: "no"
+      register: oh_my_zsh_install
+      ignore_errors: true
+
+    - name: Debug oh-my-zsh install output
+      ansible.builtin.debug:
+        var: oh_my_zsh_install
+
+    - name: Verify oh-my-zsh installation
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.oh-my-zsh/oh-my-zsh.sh"
+      register: oh_my_zsh_installed
+
+    - name: Fail if oh-my-zsh installation failed
+      ansible.builtin.fail:
+        msg: "oh-my-zsh installation failed"
+      when: not oh_my_zsh_installed.stat.exists
+
+    - name: Install Powerlevel10k theme
+      ansible.builtin.git:
+        repo: https://github.com/romkatv/powerlevel10k.git
+        dest: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/themes/powerlevel10k"
+
+    - name: Set ZSH_THEME to powerlevel10k/powerlevel10k in .zshrc
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_env.HOME }}/.zshrc"
+        regexp: '^ZSH_THEME='
+        line: 'ZSH_THEME="powerlevel10k/powerlevel10k"'
+        create: yes
+
+    - name: Ensure .zshrc contains the Powerlevel10k configuration
+      ansible.builtin.shell: |
+        echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> ~/.zshrc
+      args:
+        executable: /bin/zsh
+
+    - name: Source the updated .zshrc
+      ansible.builtin.shell: source ~/.zshrc
+      args:
+        executable: /bin/zsh
+      ignore_errors: yes
