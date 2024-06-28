@@ -1,0 +1,8 @@
+- name: Install netcat package
+  hosts: worker_nodes
+  become: true
+  tasks:
+    - name: Install netcat
+      ansible.builtin.apt:
+        name: netcat-openbsd
+        state: present
