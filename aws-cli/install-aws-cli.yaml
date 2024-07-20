@@ -1,0 +1,41 @@
+- name: Install AWS CLI on Ubuntu nodes
+  hosts: jenkins_nodes
+  become: true
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - unzip
+          - curl
+        state: present
+
+    - name: Download AWS CLI bundle
+      ansible.builtin.get_url:
+        url: "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+        dest: "/tmp/awscliv2.zip"
+        mode: '0644'
+
+    - name: Unzip AWS CLI bundle
+      ansible.builtin.unarchive:
+        src: "/tmp/awscliv2.zip"
+        dest: "/tmp"
+        remote_src: true
+
+    - name: Install AWS CLI
+      ansible.builtin.command:
+        cmd: "/tmp/aws/install"
+      args:
+        creates: "/usr/local/bin/aws"
+
+    - name: Verify AWS CLI installation
+      ansible.builtin.command: "aws --version"
+      register: aws_cli_version
+      changed_when: false
+
+    - name: Output AWS CLI version
+      ansible.builtin.debug:
+        msg: "AWS CLI version installed: {{ aws_cli_version.stdout }}"

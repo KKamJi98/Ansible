@@ -1,5 +1,5 @@
 - name: Install zsh, oh-my-zsh and Powerlevel10k theme on all nodes
-  hosts: nodes
+  hosts: all
   become: true
   tasks:
     - name: Gather facts
@@ -16,6 +16,11 @@
           - curl
           - expect
         state: present
+
+    - name: Check if oh-my-zsh is already installed
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.oh-my-zsh"
+      register: oh_my_zsh_status
 
     - name: Remove existing oh-my-zsh folder (if exists)
       ansible.builtin.file:
@@ -45,8 +50,7 @@
         CHSH: "no"
       register: oh_my_zsh_install
       when: not oh_my_zsh_status.stat.exists
-      changed_when: oh_my_zsh_install.rc == 0
-      failed_when: false
+      changed_when: false
 
     - name: Debug oh-my-zsh install output
       ansible.builtin.debug:
@@ -85,7 +89,7 @@
     - name: Ensure .zshrc contains the Powerlevel10k configuration
       ansible.builtin.lineinfile:
         path: "{{ ansible_env.HOME }}/.zshrc"
-        regexp: '^[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh'
+        regexp: '^\[\[ ! -f ~/.p10k.zsh \]\] || source ~/.p10k.zsh'
         line: '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh'
         create: true
         mode: '0644'
