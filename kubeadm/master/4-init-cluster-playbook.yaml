@@ -1,39 +1,57 @@
 - name: Initialize Kubernetes Cluster
   hosts: master_nodes
   become: true
+  vars:
+    kube_config_dir: "{{ ansible_env.HOME }}/.kube"
+    kube_config_file: "{{ kube_config_dir }}/config"
+    join_command_file: "{{ ansible_env.HOME }}/kubeadm_join_cmd.sh"
   tasks:
     - name: Initialize the Kubernetes cluster
-      command: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=10.0.0.100 --cri-socket=unix:///run/containerd/containerd.sock
+      ansible.builtin.command: >
+        kubeadm init
+        --pod-network-cidr=10.244.0.0/16
+        --apiserver-advertise-address=10.0.0.100
+        --cri-socket=unix:///run/containerd/containerd.sock
       register: kubeadm_init_output
-      ignore_errors: true
+      failed_when: kubeadm_init_output.rc != 0 and "'already initialized' not in kubeadm_init_output.stderr"
+      changed_when: "'initialized successfully' in kubeadm_init_output.stdout"
+      notify:
+        - Create .kube directory
+        - Copy admin.conf to user's kube config
+        - Generate and save join command
 
+  handlers:
     - name: Create .kube directory
-      file:
-        path: "{{ ansible_env.HOME }}/.kube"
+      ansible.builtin.file:
+        path: "{{ kube_config_dir }}"
         state: directory
-        mode: '0755'
+        mode: "0755"
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
 
     - name: Copy admin.conf to user's kube config
-      copy:
+      ansible.builtin.copy:
         src: /etc/kubernetes/admin.conf
-        dest: "{{ ansible_env.HOME }}/.kube/config"
-        remote_src: yes
+        dest: "{{ kube_config_file }}"
+        remote_src: true
         owner: "{{ ansible_env.USER }}"
-        mode: '0644'
-      when: kubeadm_init_output.changed
+        group: "{{ ansible_env.USER }}"
+        mode: "0644"
 
-    - name: Generate join command
-      shell: kubeadm token create --print-join-command
+    - name: Generate and save join command
+      ansible.builtin.command: kubeadm token create --print-join-command
       register: join_command
-      when: kubeadm_init_output.changed
+      changed_when: false
+      failed_when: join_command.rc != 0
 
     - name: Save join command to file
-      copy:
+      ansible.builtin.copy:
         content: "{{ join_command.stdout }}"
-        dest: "{{ ansible_env.HOME }}/kubeadm_join_cmd.sh"
-      when: kubeadm_init_output.changed
+        dest: "{{ join_command_file }}"
+        mode: "0700"
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
 
     - name: Output join command to console
-      debug:
+      ansible.builtin.debug:
         msg: "{{ join_command.stdout }}"
-      when: kubeadm_init_output.changed

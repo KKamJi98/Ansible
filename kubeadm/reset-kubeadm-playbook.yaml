@@ -3,40 +3,44 @@
   become: true
   tasks:
     - name: Reset kubeadm
-      command: kubeadm reset -f
+      ansible.builtin.command: kubeadm reset -f
+      register: result
+      changed_when: result.rc == 0
+      ignore_errors: "{{ ansible_check_mode }}"
 
     - name: Flush iptables rules
-      command: iptables -F
-      ignore_errors: true
+      ansible.builtin.command: iptables -F
+      changed_when: false
 
     - name: Flush iptables NAT table
-      command: iptables -t nat -F
-      ignore_errors: true
+      ansible.builtin.command: iptables -t nat -F
+      changed_when: false
 
     - name: Flush iptables mangle table
-      command: iptables -t mangle -F
-      ignore_errors: true
+      ansible.builtin.command: iptables -t mangle -F
+      changed_when: false
+
 
     - name: Delete all iptables chains
-      command: iptables -X
-      ignore_errors: true
+      ansible.builtin.command: iptables -X
+      changed_when: false
 
     - name: Remove CNI configurations
-      file:
+      ansible.builtin.file:
         path: /etc/cni/net.d
         state: absent
 
     - name: Remove Kubernetes configuration directory
-      file:
+      ansible.builtin.file:
         path: /etc/kubernetes
         state: absent
 
     - name: Remove Kubernetes .kube directory
-      file:
+      ansible.builtin.file:
         path: "{{ ansible_env.HOME }}/.kube"
         state: absent
 
     - name: Remove etcd data directory
-      file:
+      ansible.builtin.file:
         path: /var/lib/etcd
         state: absent

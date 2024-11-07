@@ -1,26 +1,29 @@
 - name: Install Calico
   hosts: master_nodes
   become: true
+  vars:
+    calico_ip_pool:
+      apiVersion: crd.projectcalico.org/v1
+      kind: IPPool
+      metadata:
+        name: default-ipv4-ippool
+      spec:
+        cidr: 10.244.0.0/16
+        ipipMode: Always
+        natOutgoing: true
   tasks:
     - name: Download Calico manifest
-      get_url:
+      ansible.builtin.get_url:
         url: https://docs.projectcalico.org/manifests/calico.yaml
         dest: /usr/local/bin/calico.yaml
+        mode: '0644'
 
-    - name: Apply Calico manifest
-      command: kubectl apply -f /usr/local/bin/calico.yaml
-      register: calico_install
+    - name: Apply Calico manifest using k8s module
+      kubernetes.core.k8s:
+        state: present
+        src: /usr/local/bin/calico.yaml
 
-    # - name: Configure Calico IP pool
-    #   shell: |
-    #     kubectl apply -f - <<EOF
-    #     apiVersion: crd.projectcalico.org/v1
-    #     kind: IPPool
-    #     metadata:
-    #       name: default-ipv4-ippool
-    #     spec:
-    #       cidr: 10.244.0.0/16
-    #       ipipMode: Always
-    #       natOutgoing: true
-    #     EOF
-    #   when: calico_install.changed
+    - name: Apply Calico IP Pool
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ calico_ip_pool }}"
